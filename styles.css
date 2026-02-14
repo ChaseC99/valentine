@@ -1,0 +1,244 @@
+:root {
+  --bg: #fff6f8;
+  --text: #2d1122;
+  --accent: #c91c5f;
+  --accent-dark: #a10f49;
+  --card: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--text);
+  background: linear-gradient(180deg, #95b8d8 0%, #8db1d3 100%);
+  min-height: 100vh;
+}
+
+.puzzle-wrap {
+  display: grid;
+  place-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.puzzle-stage {
+  position: relative;
+  width: min(96vw, 1200px);
+  min-height: clamp(620px, 82vh, 860px);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #9ec0df 0%, #8fb5d8 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35), 0 12px 30px rgba(32, 59, 94, 0.22);
+  overflow: hidden;
+}
+
+.puzzle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(52vw, 456px);
+  aspect-ratio: 3 / 4;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 0;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.08);
+  outline: 2px dashed rgba(255, 255, 255, 0.45);
+  outline-offset: 0;
+  z-index: 2;
+}
+
+.pieces-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.slot {
+  border: 1px dashed rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.04);
+  display: grid;
+  place-items: stretch;
+}
+
+.slot.drop-target {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.slot .piece {
+  position: static;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  box-shadow: none;
+  transform: none;
+  -webkit-mask-image: none;
+  mask-image: none;
+  border-radius: 2px;
+}
+
+.piece {
+  position: absolute;
+  border: 0;
+  border-radius: 0;
+  width: clamp(82px, 8.4vw, 116px);
+  aspect-ratio: 1 / 1;
+  cursor: grab;
+  background-image: url("valentines.png");
+  background-size: 300% 400%;
+  background-repeat: no-repeat;
+  outline: 2px solid transparent;
+  transition: transform 0.15s ease, outline-color 0.15s ease, box-shadow 0.15s ease, left 0.2s ease, top 0.2s ease;
+  box-shadow: 0 6px 13px rgba(0, 0, 0, 0.24);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.piece.floating {
+  transform: rotate(var(--rot, 0deg));
+}
+
+.piece:active {
+  cursor: grabbing;
+}
+
+.piece.floating:hover {
+  transform: rotate(var(--rot, 0deg)) translateY(-1px) scale(1.03);
+}
+
+.piece.selected {
+  outline-color: var(--accent);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.28);
+}
+
+.piece.floating.selected {
+  transform: rotate(var(--rot, 0deg)) translateY(-1px) scale(1.05);
+}
+
+.controls button,
+.modal-actions button {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#shuffleBtn {
+  background: var(--accent);
+  color: #fff;
+}
+
+#shuffleBtn:active {
+  transform: translateY(1px);
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 100;
+  padding: 20px;
+}
+
+.hidden {
+  display: none;
+}
+
+.modal-card {
+  position: relative;
+  width: min(92vw, 420px);
+  background: var(--card);
+  border-radius: 18px;
+  padding: 22px;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+
+.modal-card h2 {
+  margin: 0 0 8px;
+  font-size: 1.4rem;
+}
+
+.modal-card p {
+  margin: 0 0 18px;
+}
+
+.modal-actions {
+  position: relative;
+  height: 56px;
+}
+
+.yes-btn {
+  background: #d72a67;
+  color: #fff;
+  margin-right: 8px;
+}
+
+.no-btn {
+  position: absolute;
+  left: 60%;
+  top: 0;
+  background: #f0d5e0;
+  color: #6a183c;
+  transition: transform 0.15s ease;
+}
+
+.heart-layer {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  z-index: 99;
+}
+
+.heart {
+  position: absolute;
+  top: -8vh;
+  font-size: clamp(18px, 3vw, 30px);
+  animation: fall linear forwards;
+}
+
+@keyframes fall {
+  to {
+    transform: translateY(115vh) rotate(360deg);
+    opacity: 0.95;
+  }
+}
+
+@media (max-width: 460px) {
+  .puzzle-stage {
+    min-height: 76vh;
+  }
+
+  .puzzle {
+    width: min(62vw, 334px);
+  }
+
+  .piece {
+    width: clamp(64px, 17vw, 86px);
+  }
+
+  .modal-actions {
+    height: 100px;
+  }
+
+  .yes-btn,
+  .no-btn {
+    width: 110px;
+  }
+
+  .no-btn {
+    top: 48px;
+    left: 40%;
+  }
+}
