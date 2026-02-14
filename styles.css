@@ -99,6 +99,10 @@ body {
   border-radius: 2px;
 }
 
+.solved-slot {
+  border: none !important;
+}
+
 .piece {
   position: absolute;
   border: 0;

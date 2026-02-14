@@ -454,6 +454,10 @@ function onSolved() {
   spawnHearts();
   modal.classList.remove("hidden");
   modal.setAttribute("aria-hidden", "false");
+  
+  boardEl.querySelectorAll(".slot").forEach((slot) => {
+    slot.classList.add("solved-slot");
+  });
 }
 
 function moveNoButton() {
@@ -501,6 +505,10 @@ function shufflePuzzle() {
   noBtn.style.position = "absolute";
   noBtn.style.left = "60%";
   noBtn.style.top = "0";
+
+  boardEl.querySelectorAll(".slot").forEach((slot) => {
+    slot.classList.remove("solved-slot");
+  });
 
   const randomPieces = shuffleArray([...Array(TOTAL_TILES).keys()]);
   renderBoard();
