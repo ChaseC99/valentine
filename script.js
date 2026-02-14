@@ -2,7 +2,7 @@ const GRID_COLS = 3;
 const GRID_ROWS = 4;
 const TOTAL_TILES = GRID_COLS * GRID_ROWS;
 const PUZZLE_IMAGE = "valentines.png";
-const YES_LINK = "https://example.com";
+const YES_LINK = "https://partiful.com/e/qzPv7WT4ATqMICV9npDQ";
 
 const stageEl = document.getElementById("puzzleStage");
 const boardEl = document.getElementById("puzzle");
@@ -19,6 +19,7 @@ let piecePositions = new Map();
 let selectedPiece = null;
 let solvedTriggered = false;
 let cachedPieceSize = null;
+let activeDrag = null;
 
 function shuffleArray(input) {
   const array = [...input];
@@ -45,19 +46,183 @@ function createPieceTile(pieceIndex) {
   const col = pieceIndex % GRID_COLS;
   piece.style.backgroundPosition = `${(col / (GRID_COLS - 1)) * 100}% ${(row / (GRID_ROWS - 1)) * 100}%`;
 
-  piece.draggable = true;
-  piece.addEventListener("dragstart", (event) => {
-    event.dataTransfer.setData("text/plain", String(pieceIndex));
-    event.dataTransfer.effectAllowed = "move";
-  });
-
-  piece.addEventListener("click", () => onPieceSelect(pieceIndex));
+  piece.draggable = false;
 
   if (selectedPiece === pieceIndex) {
     piece.classList.add("selected");
   }
 
   return piece;
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function detachPlacedPieceForDrag(dragState) {
+  const stageRect = stageEl.getBoundingClientRect();
+  const rect = dragState.pieceEl.getBoundingClientRect();
+
+  if (dragState.sourceSlotIndex !== null && slotToPiece[dragState.sourceSlotIndex] === dragState.pieceIndex) {
+    slotToPiece[dragState.sourceSlotIndex] = null;
+  }
+
+  if (!floatingPieces.includes(dragState.pieceIndex)) {
+    floatingPieces.push(dragState.pieceIndex);
+  }
+
+  const existing = piecePositions.get(dragState.pieceIndex) || { rot: 0 };
+  const nextPos = {
+    x: rect.left - stageRect.left,
+    y: rect.top - stageRect.top,
+    rot: existing.rot || 0,
+  };
+
+  piecePositions.set(dragState.pieceIndex, nextPos);
+  dragState.originX = nextPos.x;
+  dragState.originY = nextPos.y;
+  dragState.detached = true;
+
+  dragState.pieceEl.classList.add("floating");
+  dragState.pieceEl.style.position = "absolute";
+  dragState.pieceEl.style.left = `${nextPos.x}px`;
+  dragState.pieceEl.style.top = `${nextPos.y}px`;
+  dragState.pieceEl.style.width = "";
+  dragState.pieceEl.style.height = "";
+  dragState.pieceEl.style.aspectRatio = "";
+
+  piecesLayerEl.appendChild(dragState.pieceEl);
+}
+
+function setupPointerDragging(pieceEl, pieceIndex, sourceSlotIndex = null) {
+  pieceEl.addEventListener("pointerdown", (event) => {
+    if (solvedTriggered) {
+      return;
+    }
+
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const stageRect = stageEl.getBoundingClientRect();
+    const pieceRect = pieceEl.getBoundingClientRect();
+    const existing = piecePositions.get(pieceIndex) || {
+      x: pieceRect.left - stageRect.left,
+      y: pieceRect.top - stageRect.top,
+      rot: 0,
+    };
+
+    activeDrag = {
+      pieceIndex,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: existing.x,
+      originY: existing.y,
+      moved: false,
+      pieceEl,
+      sourceSlotIndex,
+      detached: sourceSlotIndex === null,
+    };
+
+    if (sourceSlotIndex !== null) {
+      detachPlacedPieceForDrag(activeDrag);
+    }
+
+    pieceEl.setPointerCapture(event.pointerId);
+    pieceEl.style.transition = "none";
+    pieceEl.style.zIndex = "5";
+  });
+
+  pieceEl.addEventListener("pointermove", (event) => {
+    if (!activeDrag || activeDrag.pointerId !== event.pointerId || activeDrag.pieceIndex !== pieceIndex) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const deltaX = event.clientX - activeDrag.startX;
+    const deltaY = event.clientY - activeDrag.startY;
+
+    if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+      activeDrag.moved = true;
+    }
+
+    if (!activeDrag.detached) {
+      return;
+    }
+
+    const stageRect = stageEl.getBoundingClientRect();
+    const pieceSize = getPieceDimensions();
+    const nextX = clamp(activeDrag.originX + deltaX, 6, stageRect.width - pieceSize.width - 6);
+    const nextY = clamp(activeDrag.originY + deltaY, 6, stageRect.height - pieceSize.height - 6);
+
+    const prev = piecePositions.get(pieceIndex) || { rot: 0 };
+    piecePositions.set(pieceIndex, { x: nextX, y: nextY, rot: prev.rot || 0 });
+    pieceEl.style.left = `${nextX}px`;
+    pieceEl.style.top = `${nextY}px`;
+  });
+
+  pieceEl.addEventListener("pointerup", (event) => {
+    if (!activeDrag || activeDrag.pointerId !== event.pointerId || activeDrag.pieceIndex !== pieceIndex) {
+      return;
+    }
+
+    event.preventDefault();
+    if (pieceEl.hasPointerCapture(event.pointerId)) {
+      pieceEl.releasePointerCapture(event.pointerId);
+    }
+    pieceEl.style.transition = "";
+    pieceEl.style.zIndex = "";
+
+    const dragState = activeDrag;
+    activeDrag = null;
+
+    if (!dragState.moved) {
+      if (dragState.sourceSlotIndex !== null && dragState.detached) {
+        placePieceInSlot(pieceIndex, dragState.sourceSlotIndex);
+        return;
+      }
+      onPieceSelect(pieceIndex);
+      return;
+    }
+
+    if (!dragState.detached) {
+      return;
+    }
+
+    const target = document.elementFromPoint(event.clientX, event.clientY);
+    const slot = target ? target.closest(".slot") : null;
+    const slotIndex = slot ? Number(slot.dataset.slotIndex) : -1;
+
+    if (Number.isInteger(slotIndex) && slotIndex >= 0 && slotIndex < TOTAL_TILES) {
+      placePieceInSlot(pieceIndex, slotIndex);
+      return;
+    }
+
+    renderFloatingPieces();
+  });
+
+  pieceEl.addEventListener("pointercancel", () => {
+    if (!activeDrag || activeDrag.pieceIndex !== pieceIndex) {
+      return;
+    }
+
+    const dragState = activeDrag;
+
+    activeDrag = null;
+    pieceEl.style.transition = "";
+    pieceEl.style.zIndex = "";
+
+    if (dragState.sourceSlotIndex !== null && dragState.detached) {
+      placePieceInSlot(pieceIndex, dragState.sourceSlotIndex);
+      return;
+    }
+
+    renderFloatingPieces();
+  });
 }
 
 function renderBoard() {
@@ -70,25 +235,6 @@ function renderBoard() {
     slot.setAttribute("role", "gridcell");
     slot.setAttribute("aria-label", `Board slot ${slotIndex + 1}`);
 
-    slot.addEventListener("dragover", (event) => {
-      event.preventDefault();
-      slot.classList.add("drop-target");
-    });
-
-    slot.addEventListener("dragleave", () => {
-      slot.classList.remove("drop-target");
-    });
-
-    slot.addEventListener("drop", (event) => {
-      event.preventDefault();
-      slot.classList.remove("drop-target");
-      if (solvedTriggered) {
-        return;
-      }
-      const droppedPiece = Number(event.dataTransfer.getData("text/plain"));
-      placePieceInSlot(droppedPiece, slotIndex);
-    });
-
     slot.addEventListener("click", () => {
       if (selectedPiece === null || solvedTriggered) {
         return;
@@ -99,6 +245,8 @@ function renderBoard() {
     if (pieceIndex !== null) {
       const pieceEl = createPieceTile(pieceIndex);
       pieceEl.style.position = "static";
+      pieceEl.classList.remove("floating");
+      setupPointerDragging(pieceEl, pieceIndex, slotIndex);
       slot.appendChild(pieceEl);
       slot.addEventListener("dblclick", () => returnPieceToScatter(slotIndex));
     }
@@ -119,6 +267,7 @@ function renderFloatingPieces() {
       pieceEl.style.top = `${position.y}px`;
       pieceEl.style.setProperty("--rot", `${position.rot}deg`);
     }
+    setupPointerDragging(pieceEl, pieceIndex, null);
     piecesLayerEl.appendChild(pieceEl);
   });
 }
